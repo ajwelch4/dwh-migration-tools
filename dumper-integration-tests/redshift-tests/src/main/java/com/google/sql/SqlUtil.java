@@ -32,15 +32,12 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * A helper class for reading .sql files.
- */
+/** A helper class for reading .sql files. */
 public final class SqlUtil {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SqlUtil.class);
 
-  private SqlUtil() {
-  }
+  private SqlUtil() {}
 
   /**
    * @param sqlPath Path to an .sql file.

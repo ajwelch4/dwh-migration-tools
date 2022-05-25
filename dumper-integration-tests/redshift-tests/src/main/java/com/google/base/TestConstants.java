@@ -20,18 +20,18 @@ import static java.lang.System.getenv;
 
 import java.util.regex.Pattern;
 
-/**
- * Stores constants common among all tests.
- */
+/** Stores constants common among all tests. */
 public final class TestConstants {
 
   public static final String URL_DB = getenv("DB_URL");
   public static final String USERNAME_DB = getenv("USERNAME");
   public static final String PASSWORD_DB = getenv("PASSWORD");
 
-  public static final String ET_OUTPUT_PATH = getenv("EXPORT_PATH");
+  public static final String EXPORTED_FILES_BASE_PATH = getenv("EXPORT_PATH");
+
+  public static final String SQL_REQUESTS_BASE_PATH = "src/main/java/com/google/sql/";
+
   public static final Pattern TRAILING_SPACES_REGEX = Pattern.compile("\\s+$");
 
-  private TestConstants() {
-  }
+  private TestConstants() {}
 }
