@@ -6,14 +6,52 @@ client package.
 
 ## Installation
 
-Clone or download this repository and
-install the Python packages listed in the [requirements.txt](requirements.txt) file through (all commands are supposed to be run from the archive or repository top level folder): 
+Clone or download this repository and install the exemplary client: 
 
-```
-pip3 install -r client/requirements.txt
+```shell
+git clone git@github.com:google/dwh-migration-tools.git
+pip3 install ./dwh-migration-tools/client
 ```
 
 Install the gcloud CLI following the [instructions](http://cloud.google.com/sdk/docs/install).
+
+### [Recommended] Install in a virtualenv
+
+```shell
+python3 -m venv venv
+source venv/bin/activate
+git clone git@github.com:google/dwh-migration-tools.git
+pip3 install ./dwh-migration-tools/client
+```
+
+### [Optional] Install in editable mode
+
+If you plan on editing the Python files of the client directly, you will want to
+install it in editable mode using `-e`:
+
+```shell
+python3 -m venv venv
+source venv/bin/activate
+git clone git@github.com:google/dwh-migration-tools.git
+pip3 install -e ./dwh-migration-tools/client
+```
+
+### [Optional] Install the recommended concrete dependencies
+
+Running `pip install` will install concrete dependencies from a list of
+[abstract dependencies](https://pipenv.pypa.io/en/latest/advanced/#pipfile-vs-setup-py) 
+defined in `setup.py` using `pip`'s dependency resolver. If you want to ensure
+your installation is using the same concrete dependencies that the exemplary
+client was developed against, then install `requirements.txt` before installing
+the client:
+
+```shell
+python3 -m venv venv
+source venv/bin/activate
+git clone git@github.com:google/dwh-migration-tools.git
+pip3 install -r ./dwh-migration-tools/client/requirements.txt
+pip3 install -e ./dwh-migration-tools/client
+```
 
 ### [Optional] gcloud login and authentication
 
@@ -39,9 +77,20 @@ gcloud auth application-default login
 
 ## User Manual
 
+## Initialize a new batch SQL translation project
+
+```shell
+dwh-migration-client init my_project
+```
+Change directory into the newly initialized translation project:
+
+```shell
+cd my_project
+```
+
 Open the [config.yaml](config.yaml) file and fill all the required fields. If you are a first
 time user who just wants to give it a try, we recommend to create a new [GCP
-project](https://console.cloud.google.com/) and put the project_number (or project_id) in the `project_number` field in 
+project](https://console.cloud.google.com/) and put the project_number (or project_id) in the `project_number` field in
 the config.
 
 If you want to use an existing project, make sure you have all the required [IAM
@@ -52,7 +101,7 @@ permissions](https://cloud.google.com/bigquery/docs/batch-sql-translator#require
 Simply run the following commands in Python3 to start a translation using the sample query files in [input](input).
 
 ```
-bin/dwh-migration-client
+dwh-migration-client
 ```
 ## input and output directory
 
@@ -62,15 +111,15 @@ are OK). The file extension can be in any format like .txt or .sql.
 Every input SQL file will have a corresponding output file under the same name in
 the output directory.
 
-The default value of input dir is `client/input`. To override it, add the flag `--input path/to/input_dir` when running 
+The default value of input dir is `input`. To override it, add the flag `--input path/to/input_dir` when running 
 the above command.  
 
-The default value of output dir that stores the outputs of a translation job is `client/output`. To override it, add the 
+The default value of output dir that stores the outputs of a translation job is `output`. To override it, add the 
 flag `--output path/to/output_dir` when running the above command.
 
 Example command of overriding the default input/output directory.
 ```
-bin/dwh-migration-client --input path/to/input_dir --output path/to/output_dir
+dwh-migration-client --input path/to/input_dir --output path/to/output_dir
 ```
 
 ### [Optional] macros replacement mapping
@@ -78,11 +127,11 @@ bin/dwh-migration-client --input path/to/input_dir --output path/to/output_dir
 This tool can also perform macros substitution before/after the translation job
 through an option flag.
 
-To enable macros substitution, pass the arg '-m client/macros.yaml' when
+To enable macros substitution, pass the arg '-m macros.yaml' when
 running the tool:
 
 ```
-bin/dwh-migration-client -m client/macros.yaml
+dwh-migration-client -m macros.yaml
 ```
 
 Here is an example of the macros.yaml file:
@@ -124,7 +173,7 @@ To enable object name mapping, pass the optional arg '-o path/to/object_mapping.
 running the tool, e.g.:
 
 ```
-bin/dwh-migration-client -o client/object_mapping.json
+dwh-migration-client -o object_mapping.json
 ```
 
 Here is an example of the object_mapping.json file:

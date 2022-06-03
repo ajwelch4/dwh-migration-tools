@@ -17,7 +17,7 @@ import os
 
 from argparse import Namespace
 from os.path import exists, abspath
-from object_mapping_parser import ObjectMappingParser
+from .object_mapping_parser import ObjectMappingParser
 from yaml.loader import SafeLoader
 
 AZURESYNAPSE2BQ = "Translation_AzureSynapse2BQ"
@@ -31,12 +31,9 @@ SPARKSQL2BQ = "Translation_SparkSQL2BQ"
 TERADATA2BQ = "Translation_Teradata2BQ"
 VERTICA2BQ = "Translation_Vertica2BQ"
 
-REPO_ROOT_DIR = "dwh-migration-tools"
-CLIENT_DIR = "client"
-
-DEFAULT_CONFIG_PATH = "client/config.yaml"
-DEFAULT_INPUT_PATH = "client/input"
-DEFAULT_OUTPUT_PATH = "client/output"
+DEFAULT_CONFIG_PATH = "config.yaml"
+DEFAULT_INPUT_PATH = "input"
+DEFAULT_OUTPUT_PATH = "output"
 
 
 class TranslationConfig:
@@ -141,20 +138,6 @@ class ConfigParser:
 def validate_args(args: Namespace):
     """Validates the arguments passed to the tool
     """
-    if not os.getcwd().endswith(REPO_ROOT_DIR):
-        if not args.config:
-            print("Warning: you are not running the binary from the repo's root dir \"%s\" and you did not "
-                  "pass a config file path through \"--config\". Trying to use the default config path \"%s\"."
-                  % (REPO_ROOT_DIR, DEFAULT_CONFIG_PATH))
-        if not args.input:
-            print("Warning: you are not running the binary from the repo's root dir \"%s\" and you did not "
-                  "pass an input path through \"--input\". Trying to use the default input path \"%s\"." %
-                  (REPO_ROOT_DIR, DEFAULT_INPUT_PATH))
-        if not args.output:
-            print("Warning: you are not running the binary from the repo's root dir \"%s\" and you did not "
-                  "pass an output path through \"--output\". Trying to use the default output path \"%s\"." %
-                  (REPO_ROOT_DIR, DEFAULT_OUTPUT_PATH))
-
     if args.input:
         assert exists(args.input), "Can't find an input directory at \"%s\"." % args.input
     else:

@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import shutil
-import config_parser
-import gcs_util
+from . import config_parser
+from . import gcs_util
 import sys
 import uuid
 import time
 
 from datetime import datetime
-from os.path import dirname, join
-from macro_processor import MacroProcessor
+from os.path import dirname, join, exists
+from .macro_processor import MacroProcessor
 from google.cloud import bigquery_migration_v2
 
 
@@ -78,7 +78,7 @@ class BatchSqlTranslator:
 
         print("Finished postprocessing. The outputs are in %s\n" % self.config.output_directory)
 
-        if self.config.clean_up_tmp_files and exit(self.tmp_dir):
+        if self.config.clean_up_tmp_files and exists(self.tmp_dir):
             print("Cleaning up tmp files under \"%s\"..." % self.tmp_dir)
             shutil.rmtree(self.tmp_dir)
             print("Finished cleanup.")
