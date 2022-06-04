@@ -8,3 +8,7 @@ format:
 .PHONY: lint
 lint: format
 	pylint *.py
+
+.PHONY: check
+check: lint
+	mypy --strict .
