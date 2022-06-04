@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""A parser for the config file."""
 
 from os.path import abspath
 
@@ -29,7 +30,10 @@ TERADATA2BQ = "Translation_Teradata2BQ"
 VERTICA2BQ = "Translation_Vertica2BQ"
 
 
-class TranslationConfig:
+# TODO: Use a dataclass for this. Or just use
+#  bigquery_migration_v2.TranslationConfigDetails directly? Why do we need a separate
+#  config object?
+class TranslationConfig:  # pylint: disable=too-few-public-methods
     """A structure for holding the config info of the translation job."""
 
     def __init__(self):
@@ -42,7 +46,7 @@ class TranslationConfig:
         self.clean_up_tmp_files = True
 
 
-class ConfigParser:
+class ConfigParser:  # pylint: disable=too-few-public-methods
     """A parser for the config file."""
 
     def __init__(self, config_file_path: str):
@@ -77,8 +81,8 @@ class ConfigParser:
         """
         config = TranslationConfig()
         print("Reading translation config file from %s..." % self._config_file_path)
-        with open(self._config_file_path) as f:
-            data = yaml.load(f, Loader=SafeLoader)
+        with open(self._config_file_path, encoding="utf-8") as file:
+            data = yaml.load(file, Loader=SafeLoader)
         self.__validate_config_yaml(data)
 
         gcp_settings_input = data["gcp_settings"]
