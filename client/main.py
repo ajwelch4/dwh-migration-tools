@@ -26,7 +26,7 @@ from macro_processor import MacroProcessor
 from object_mapping_parser import ObjectMappingParser
 
 
-def start_translation(args):
+def start_translation(args: argparse.Namespace) -> None:
     """Starts a batch sql translation job."""
     config = ConfigParser(args.config).parse_config()
 
@@ -110,7 +110,7 @@ def validated_nonexistent_path(unvalidated_path: str, force: bool = False) -> st
     raise argparse.ArgumentTypeError("%s already exists." % path.as_posix())
 
 
-def main():
+def main() -> None:
     """CLI for BigQuery Batch SQL Translator"""
     parser = argparse.ArgumentParser(
         description="Config the Batch Sql translation tool."
