@@ -87,9 +87,7 @@ class MacroProcessor:
             return False
         return True
 
-    def __process(
-        self, input_dir: str, output_dir: str, revert_expansion: bool = False
-    ) -> None:
+    def __process(self, input_dir: str, output_dir: str, revert_expansion=False):
         """Replaces or restores macros for every file in the input folder and save
         outputs in a new folder.
 
@@ -207,7 +205,7 @@ class MapBasedExpander:
         reg_pattern_map, patterns = self.__get_all_regex_pattern_mapping(path)
         return patterns.sub(lambda m: reg_pattern_map[re.escape(m.group(0))], text)
 
-    def unexpand(self, text: str, path: str) -> str:
+    def unexpand(self, text: str, path: str):
         """Reverts the macros substitution by replacing the values with macros defined
         in the macros_substitution_map file.
 
@@ -233,9 +231,7 @@ class MapBasedExpander:
                 the files with extension of ".sql".
         """
         with open(self.yaml_file_path, encoding="utf-8") as file:
-            data: Dict[str, Dict[str, Dict[str, str]]] = yaml.load(
-                file, Loader=SafeLoader
-            )
+            data = yaml.load(file, Loader=SafeLoader)
         self.__validate_macro_file(data)
         return data[self.__YAML_KEY]
 
@@ -252,9 +248,7 @@ class MapBasedExpander:
             self.yaml_file_path,
         )
 
-    def __get_all_regex_pattern_mapping(
-        self, file_path: str, use_reversed_map: bool = False
-    ) -> Tuple[Dict[str, str], Pattern[str]]:
+    def __get_all_regex_pattern_mapping(self, file_path: str, use_reversed_map=False):
         """Compiles all the macros matched with the file path into a single regex
         pattern."""
         macro_subst_maps = (

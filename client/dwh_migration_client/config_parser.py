@@ -32,8 +32,10 @@ TERADATA2BQ = "Translation_Teradata2BQ"
 VERTICA2BQ = "Translation_Vertica2BQ"
 
 
-@dataclass
-class TranslationConfig:
+# TODO: Use a dataclass for this. Or just use
+#  bigquery_migration_v2.TranslationConfigDetails directly? Why do we need a separate
+#  config object?
+class TranslationConfig:  # pylint: disable=too-few-public-methods
     """A structure for holding the config info of the translation job."""
 
     project_number: str

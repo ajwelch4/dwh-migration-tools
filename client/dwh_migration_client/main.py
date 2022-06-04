@@ -14,19 +14,30 @@
 """CLI for BigQuery Batch SQL Translator"""
 
 import argparse
+import os
 import pathlib
-from functools import partial
 import shutil
 import sys
+from functools import partial
+from importlib import resources
 
-import batch_sql_translator
-from config_parser import ConfigParser
-from gcloud_auth_helper import validate_gcloud_auth_settings
-from macro_processor import MacroProcessor
-from object_mapping_parser import ObjectMappingParser
+from . import batch_sql_translator
+from .config_parser import ConfigParser
+from .gcloud_auth_helper import validate_gcloud_auth_settings
+from .macro_processor import MacroProcessor
+from .object_mapping_parser import ObjectMappingParser
 
 
-def start_translation(args: argparse.Namespace) -> None:
+def init(args: argparse.Namespace) -> None:
+    """Initializes a new batch SQL translation project."""
+    directory = os.path.abspath(args.directory)
+    print("Initializing a new batch SQL translation project in %s" % directory)
+    with resources.path("dwh_migration_client", "example") as example:
+        shutil.copytree(example, directory)
+    print("Initial project scaffolding has been created in %s" % directory)
+
+
+def translate(args: argparse.Namespace) -> None:
     """Starts a batch sql translation job."""
     config = ConfigParser(args.config).parse_config()
 
@@ -53,6 +64,7 @@ def start_translation(args: argparse.Namespace) -> None:
 
 def validated_file(unvalidated_path: str) -> str:
     """Validates a path is a regular file that exists.
+
     Args:
         unvalidated_path: A string representing the path to validate.
     Returns:
@@ -70,6 +82,7 @@ def validated_file(unvalidated_path: str) -> str:
 
 def validated_directory(unvalidated_path: str) -> str:
     """Validates a path is a directory that exists.
+
     Args:
         unvalidated_path: A string representing the path to validate.
     Returns:
@@ -87,6 +100,7 @@ def validated_directory(unvalidated_path: str) -> str:
 
 def validated_nonexistent_path(unvalidated_path: str, force: bool = False) -> str:
     """Validates a path does not exist.
+
     Args:
         unvalidated_path: A string representing the path to validate.
         force: A boolean representing whether to remove unvalidated_path if it exists.
@@ -110,30 +124,46 @@ def validated_nonexistent_path(unvalidated_path: str, force: bool = False) -> st
     raise argparse.ArgumentTypeError("%s already exists." % path.as_posix())
 
 
-def main() -> None:
+def main():
     """CLI for BigQuery Batch SQL Translator"""
     parser = argparse.ArgumentParser(
         description="Config the Batch Sql translation tool."
     )
-    parser.add_argument(
+    subparsers = parser.add_subparsers(title="Subcommands")
+
+    init_subparser = subparsers.add_parser(
+        "init", help="Initialize a new batch SQL translation project."
+    )
+    init_subparser.add_argument(
+        "directory",
+        type=validated_nonexistent_path,
+        help="The directory to create and populate with the initial project "
+        "scaffolding.",
+    )
+    init_subparser.set_defaults(subcommand_handler=init)
+
+    translate_subparser = subparsers.add_parser(
+        "translate", help="Execute a batch SQL translation job."
+    )
+    translate_subparser.add_argument(
         "--config",
         type=validated_file,
-        default="client/config.yaml",
+        default="config.yaml",
         help="Path to the config.yaml file.",
     )
-    parser.add_argument(
+    translate_subparser.add_argument(
         "--input",
         type=validated_directory,
-        default="client/input",
+        default="input",
         help="Path to the input_directory.",
     )
-    parser.add_argument(
+    translate_subparser.add_argument(
         "--output",
         type=partial(validated_nonexistent_path, force=True),
-        default="client/output",
+        default="output",
         help="Path to the input_directory.",
     )
-    parser.add_argument(
+    translate_subparser.add_argument(
         "-m",
         "--macros",
         type=validated_file,
@@ -144,7 +174,7 @@ def main() -> None:
         "query files in a post-processing step.  The replacement does not apply for "
         "files with extension of .zip, .csv, .json.",
     )
-    parser.add_argument(
+    translate_subparser.add_argument(
         "-o",
         "--object_name_mapping",
         type=validated_file,
@@ -153,13 +183,14 @@ def main() -> None:
         "names for those objects in BigQuery. More info please see "
         "https://cloud.google.com/bigquery/docs/output-name-mapping.",
     )
+    translate_subparser.set_defaults(subcommand_handler=translate)
 
     # Print usage message if no args are supplied.
     if len(sys.argv) <= 1:
         sys.argv.append("--help")
 
     args = parser.parse_args()
-    return start_translation(args)
+    args.subcommand_handler(args)
 
 
 if __name__ == "__main__":

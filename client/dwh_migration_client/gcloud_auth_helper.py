@@ -18,7 +18,7 @@ import os
 import subprocess
 
 
-def validate_gcloud_auth_settings(project_number: str) -> None:
+def validate_gcloud_auth_settings(project_number: str):
     """Validates the gcloud login and authentication settings for the user through
     gcloud CLI command. If validation fails, the method will try to log in and generate
     an application-default-authentication.json file.

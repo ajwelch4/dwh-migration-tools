@@ -25,11 +25,11 @@ from typing import Optional
 
 from google.cloud import bigquery_migration_v2
 
-import config_parser
-import gcs_util
-from config_parser import TranslationConfig
-from macro_processor import MacroProcessor
-from object_mapping_parser import ObjectMappingParser
+from . import config_parser, gcs_util
+from .config_parser import TranslationConfig
+from .macro_processor import MacroProcessor
+from .object_mapping_parser import ObjectMappingParser
+
 
 # TODO: Refactor the attributes of this class. Likely as part of adding Ingesters and
 #   Writers.
@@ -65,7 +65,7 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
     # This directory will be deleted (by default) after the job finishes.
     __TMP_DIR_NAME = ".tmp_processed"
 
-    def start_translation(self) -> None:
+    def start_translation(self):
         """Waits until the workflow finishes by calling the Migration Service API every
         5 seconds.
 
@@ -135,9 +135,7 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
             "?projectnumber=%s" % self.config.project_number
         )
 
-    def __wait_until_job_finished(
-        self, workflow_id: str, length_seconds: int = 600
-    ) -> None:
+    def __wait_until_job_finished(self, workflow_id: str, length_seconds: int = 600):
         """Waits until the workflow finishes by calling the Migration Service API every
         5 seconds.
 
@@ -163,7 +161,7 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
         )
         sys.exit()
 
-    def list_migration_workflows(self, num_jobs: int = 5) -> None:
+    def list_migration_workflows(self, num_jobs=5):
         """Lists the most recent bigquery migration workflows status and prints on the
         terminal.
 
@@ -181,9 +179,7 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
             if i < num_jobs:
                 print(response)
 
-    def get_migration_workflow(
-        self, job_name: str
-    ) -> bigquery_migration_v2.MigrationWorkflow:
+    def get_migration_workflow(self, job_name):
         """Starts a get API call for a migration workflow and print out the status on
         terminal."""
         print("Get migration workflows for %s" % job_name)
