@@ -4,3 +4,7 @@ SHELL := /bin/bash -ex
 format:
 	black .
 	isort .
+
+.PHONY: lint
+lint: format
+	pylint *.py
