@@ -42,7 +42,6 @@ class TranslationConfig:
     translation_type: str
     default_database: Optional[str] = None
     schema_search_path: Optional[Tuple[str]] = None
-    clean_up_tmp_files: bool = True
 
 
 class ConfigParser:  # pylint: disable=too-few-public-methods
@@ -56,7 +55,6 @@ class ConfigParser:  # pylint: disable=too-few-public-methods
     __TRANSLATION_CONFIG = "translation_config"
     __DEFAULT_DATABASE = "default_database"
     __SCHEMA_SEARCH_PATH = "schema_search_path"
-    __CLEAN_UP = "clean_up_tmp_files"
 
     # The supported task types
     __SUPPORTED_TYPES = {
@@ -76,7 +74,7 @@ class ConfigParser:  # pylint: disable=too-few-public-methods
         """Parses the config file into TranslationConfig.
 
         Return:
-            translation config.
+            TranslationConfig.
         """
         print("Reading translation config file from %s..." % self._config_file_path)
         with open(self._config_file_path, encoding="utf-8") as file:
@@ -91,12 +89,6 @@ class ConfigParser:  # pylint: disable=too-few-public-methods
         location = translation_config_input["location"]
         translation_type = translation_config_input[self.__TRANSLATION_TYPE]
 
-        clean_up_tmp_files = (
-            True
-            if self.__CLEAN_UP not in translation_config_input
-            else translation_config_input[self.__CLEAN_UP]
-        )
-
         default_database = translation_config_input.get(self.__DEFAULT_DATABASE)
         schema_search_path = translation_config_input.get(self.__SCHEMA_SEARCH_PATH)
 
@@ -105,7 +97,6 @@ class ConfigParser:  # pylint: disable=too-few-public-methods
             gcs_bucket=gcs_bucket,
             location=location,
             translation_type=translation_type,
-            clean_up_tmp_files=clean_up_tmp_files,
             default_database=default_database,
             schema_search_path=schema_search_path,
         )

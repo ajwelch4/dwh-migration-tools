@@ -32,6 +32,3 @@ translation_config:
   # [Optional field] The schema search path. When SQL objects are missing schema name, translation engine will search through this list to find the value.
   # schema_search_path:
   #   - __DEFAULT_SCHEMA__
-
-  # Set this to True (default) to clean up the temporary data in the '.tmp_processed' folder after job finishes.
-  clean_up_tmp_files: False
