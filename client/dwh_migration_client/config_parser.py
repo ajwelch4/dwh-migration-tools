@@ -122,13 +122,10 @@ class ConfigParser:  # pylint: disable=too-few-public-methods
 
     def _validate_config_yaml(self, yaml_data: Dict[str, Dict[str, str]]) -> None:
         """Validate the data in the config yaml file."""
-        assert (
-            self._TRANSLATION_CONFIG in yaml_data
-        ), "Missing translation_config field in config.yaml."
-        assert (
-            self._TRANSLATION_TYPE in yaml_data[self._TRANSLATION_CONFIG]
-        ), "Missing translation_type field in config.yaml."
+        if self._TRANSLATION_CONFIG not in yaml_data:
+            raise ValueError("Missing translation_config field in config.yaml.")
+        if self._TRANSLATION_TYPE not in yaml_data[self._TRANSLATION_CONFIG]:
+            raise ValueError("Missing translation_type field in config.yaml.")
         translation_type = yaml_data[self._TRANSLATION_CONFIG][self._TRANSLATION_TYPE]
-        assert (
-            translation_type in self._SUPPORTED_TYPES
-        ), f'The type "{translation_type}" is not supported.'
+        if translation_type not in self._SUPPORTED_TYPES:
+            raise ValueError(f'The type "{translation_type}" is not supported.')

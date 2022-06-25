@@ -87,14 +87,15 @@ class GcloudAuthHelper:
             os.system(self._APPLICATION_DEFAULT_LOGIN_COMMAND)
 
     def validate_project_config(self) -> None:
+        """Validate project config status in gcloud"""
         logging.info("Validate project config status in gcloud...")
         os.system(f"{self._SET_PROJECT} {self.project_number}")
         result = subprocess.getoutput(self._CONFIG_LIST)
         logging.info("Your cloud config used for this translation job is:\n%s", result)
-        assert "account =" in result, (
-            "Can't find account info in gcloud config. "
-            f'Please log in through "{self._AUTH_LOGIN}"'
-        )
-        assert (
-            f"project = {self.project_number in result}"
-        ), "Can't find GCP project number in gcloud config."
+        if "account =" not in result:
+            raise RuntimeError(
+                "Can't find account info in gcloud config. "
+                f'Please log in through "{self._AUTH_LOGIN}"'
+            )
+        if self.project_number not in result:
+            raise RuntimeError("Can't find GCP project number in gcloud config.")

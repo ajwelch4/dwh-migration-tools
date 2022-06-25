@@ -61,16 +61,20 @@ class ObjectMappingParser:  # pylint: disable=too-few-public-methods
         with open(self._json_file_path, encoding="utf-8") as file:
             data = json.load(file)
         for name_map in data[self._NAME_MAP_FIELD]:
-            assert self._SOURCE_FIELD in name_map, (
-                f'Invalid object name mapping: can\'t find a "{self._SOURCE_FIELD}" '
-                f'field in "{self._json_file_path}". '
-                f'Instead we got "{name_map}".'
-            )
-            assert self._TARGET_FIELD in name_map, (
-                f'Invalid object name mapping: can\'t find a "{self._TARGET_FIELD}" '
-                f'field in "{self._json_file_path}". '
-                f'Instead we got "{name_map}".'
-            )
+            if self._SOURCE_FIELD not in name_map:
+                raise ValueError(
+                    "Invalid object name mapping: "
+                    f'can\'t find a "{self._SOURCE_FIELD}" '
+                    f'field in "{self._json_file_path}". '
+                    f'Instead we got "{name_map}".'
+                )
+            if self._TARGET_FIELD not in name_map:
+                raise ValueError(
+                    "Invalid object name mapping: "
+                    f'can\'t find a "{self._TARGET_FIELD}" '
+                    f'field in "{self._json_file_path}". '
+                    f'Instead we got "{name_map}".'
+                )
             onm = ObjectNameMapping()
             onm.source = self._parse_source(name_map[self._SOURCE_FIELD])
             onm.target = self._parse_target(name_map[self._TARGET_FIELD])
@@ -80,11 +84,13 @@ class ObjectMappingParser:  # pylint: disable=too-few-public-methods
     def _parse_source(self, source_data: Dict[str, str]) -> NameMappingKey:
         name_mapping_key = NameMappingKey()
         if self._TYPE_FIELD in source_data:
-            assert source_data[self._TYPE_FIELD] in self._SUPPORTED_TYPES, (
-                f'The source type of name mapping "{source_data[self._TYPE_FIELD]}" '
-                f'in file "{self._json_file_path}" is not one of'
-                f'the supported types: "{self._SUPPORTED_TYPES}"'
-            )
+            if source_data[self._TYPE_FIELD] not in self._SUPPORTED_TYPES:
+                raise ValueError(
+                    "The source type of name mapping "
+                    f'"{source_data[self._TYPE_FIELD]}" '
+                    f'in file "{self._json_file_path}" is not one of'
+                    f'the supported types: "{self._SUPPORTED_TYPES}"'
+                )
             name_mapping_key.type_ = source_data[self._TYPE_FIELD]
         if self._DB_FIELD in source_data:
             name_mapping_key.database = source_data[self._DB_FIELD]
@@ -109,6 +115,5 @@ class ObjectMappingParser:  # pylint: disable=too-few-public-methods
         return name_mapping_value
 
     def _validate_onm_file(self) -> None:
-        assert os.path.isfile(
-            self._json_file_path
-        ), f'Can\'t find a file at "{self._json_file_path}".'
+        if not os.path.isfile(self._json_file_path):
+            raise ValueError(f'Can\'t find a file at "{self._json_file_path}".')
