@@ -14,8 +14,8 @@
 """A parser for the config file."""
 
 import logging
+import pathlib
 from dataclasses import asdict, dataclass
-from os.path import abspath
 from pprint import pformat
 from typing import Dict, Optional, Tuple
 
@@ -51,8 +51,8 @@ class TranslationConfig:
 class ConfigParser:  # pylint: disable=too-few-public-methods
     """A parser for the config file."""
 
-    def __init__(self, config_file_path: str) -> None:
-        self._config_file_path = abspath(config_file_path)
+    def __init__(self, config_file_path: pathlib.Path) -> None:
+        self._config_file_path = config_file_path
 
     # Config field name
     _TRANSLATION_TYPE = "translation_type"

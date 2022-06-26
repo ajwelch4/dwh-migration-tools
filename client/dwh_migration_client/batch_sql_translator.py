@@ -16,12 +16,12 @@
 
 import logging
 import os
+import pathlib
 import shutil
 import sys
 import time
 import uuid
 from datetime import datetime
-from os.path import dirname, join
 from typing import Optional
 
 from google.cloud import bigquery_migration_v2
@@ -42,8 +42,8 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         config: TranslationConfig,
-        input_directory: str,
-        output_directory: str,
+        input_directory: pathlib.Path,
+        output_directory: pathlib.Path,
         preprocessor: Optional[MacroProcessor] = None,
         object_name_mapping_list: Optional[ObjectMappingParser] = None,
     ) -> None:
@@ -53,7 +53,7 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
         self.client = bigquery_migration_v2.MigrationServiceClient()
         self.preprocessor = preprocessor  # May be None
         self._object_name_mapping_list = object_name_mapping_list
-        self.tmp_dir = join(dirname(self._input_directory), self._TMP_DIR_NAME)
+        self.tmp_dir = self._input_directory.parent / self._TMP_DIR_NAME
 
     _JOB_FINISHED_STATES = {
         bigquery_migration_v2.types.MigrationWorkflow.State.COMPLETED,
@@ -76,23 +76,23 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
         local_output_dir = self._output_directory
         if self.preprocessor is not None:
             logging.info("Start pre-processing input query files...")
-            local_input_dir = join(self.tmp_dir, "input")
-            local_output_dir = join(self.tmp_dir, "output")
+            local_input_dir = self.tmp_dir / "input"
+            local_output_dir = self.tmp_dir / "output"
             self.preprocessor.preprocess(self._input_directory, local_input_dir)
 
         gcs_path = self._generate_gcs_path()
-        gcs_input_path = join(f"gs://{self.config.gcs_bucket}", gcs_path, "input")
-        gcs_output_path = join(f"gs://{self.config.gcs_bucket}", gcs_path, "output")
+        gcs_input_path = f"gs://{self.config.gcs_bucket}/{gcs_path}/input"
+        gcs_output_path = f"gs://{self.config.gcs_bucket}/{gcs_path}/output"
         logging.info("Uploading inputs to gcs ...")
         gcs_util.upload_directory(
-            local_input_dir, self.config.gcs_bucket, join(gcs_path, "input")
+            local_input_dir, self.config.gcs_bucket, f"{gcs_path}/input"
         )
         logging.info("Start translation job...")
         job_name = self.create_migration_workflow(gcs_input_path, gcs_output_path)
         self._wait_until_job_finished(job_name)
         logging.info("Downloading outputs...")
         gcs_util.download_directory(
-            local_output_dir, self.config.gcs_bucket, join(gcs_path, "output")
+            local_output_dir, self.config.gcs_bucket, f"{gcs_path}/output"
         )
 
         if self.preprocessor is not None:

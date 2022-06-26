@@ -15,7 +15,7 @@
 
 import json
 import logging
-import os
+import pathlib
 from typing import Dict
 
 from google.cloud.bigquery_migration_v2 import (
@@ -29,7 +29,7 @@ from google.cloud.bigquery_migration_v2 import (
 class ObjectMappingParser:  # pylint: disable=too-few-public-methods
     """A parser for the object name mapping json file."""
 
-    def __init__(self, json_file_path: str) -> None:
+    def __init__(self, json_file_path: pathlib.Path) -> None:
         self._json_file_path = json_file_path
 
     _NAME_MAP_FIELD = "name_map"
@@ -115,5 +115,5 @@ class ObjectMappingParser:  # pylint: disable=too-few-public-methods
         return name_mapping_value
 
     def _validate_onm_file(self) -> None:
-        if not os.path.isfile(self._json_file_path):
+        if not self._json_file_path.is_file():
             raise ValueError(f'Can\'t find a file at "{self._json_file_path}".')
