@@ -15,25 +15,20 @@
     python client library."""
 
 import logging
-import os
-import pathlib
-import shutil
 import sys
 import time
-import uuid
 from datetime import datetime
 from typing import Optional
 
 from google.cloud import bigquery_migration_v2
 
-from dwh_migration_client import config_parser, gcs_util
+from dwh_migration_client import config_parser
 from dwh_migration_client.config_parser import TranslationConfig
-from dwh_migration_client.macro_processor import MacroProcessor
 from dwh_migration_client.object_mapping_parser import ObjectMappingParser
+from dwh_migration_client.processors.pipeline import ProcessorPipeline
 
 
-# TODO: Refactor the attributes of this class.
-class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
+class BatchSqlTranslator:
     """A class to manage Batch SQL Translation job using the bigquery_migration_v2
     python client library.
 
@@ -42,73 +37,38 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         config: TranslationConfig,
-        input_directory: pathlib.Path,
-        output_directory: pathlib.Path,
-        preprocessor: Optional[MacroProcessor] = None,
+        processor_pipeline: ProcessorPipeline,
         object_name_mapping_list: Optional[ObjectMappingParser] = None,
     ) -> None:
         self.config = config
-        self._input_directory = input_directory
-        self._output_directory = output_directory
+        self._processor_pipeline = processor_pipeline
         self.client = bigquery_migration_v2.MigrationServiceClient()
-        self.preprocessor = preprocessor  # May be None
         self._object_name_mapping_list = object_name_mapping_list
-        self.tmp_dir = self._input_directory.parent / self._TMP_DIR_NAME
 
     _JOB_FINISHED_STATES = {
         bigquery_migration_v2.types.MigrationWorkflow.State.COMPLETED,
         bigquery_migration_v2.types.MigrationWorkflow.State.PAUSED,
     }
 
-    # The name of a hidden directory that stores temporary processed files if user
-    # defines a macro replacement map.
-    # This directory will be deleted (by default) after the job finishes.
-    _TMP_DIR_NAME = ".tmp_processed"
-
     def start_translation(self) -> None:
-        """Waits until the workflow finishes by calling the Migration Service API every
-        5 seconds.
+        """The main workflow for the batch translation job.
 
-        workflow_id: the workflow id in the format of
-        length_seconds: max wait time.
+        The workflow includes the following steps:
+            - Run preprocessors.
+            - Create migration workflow job.
+            - Wait for job to finish.
+            - Run postprocessors.
         """
-        local_input_dir = self._input_directory
-        local_output_dir = self._output_directory
-        if self.preprocessor is not None:
-            logging.info("Start pre-processing input query files...")
-            local_input_dir = self.tmp_dir / "input"
-            local_output_dir = self.tmp_dir / "output"
-            self.preprocessor.preprocess(self._input_directory, local_input_dir)
+        self._processor_pipeline.preprocess()
 
-        gcs_path = self._generate_gcs_path()
-        gcs_input_path = f"gs://{self.config.gcs_bucket}/{gcs_path}/input"
-        gcs_output_path = f"gs://{self.config.gcs_bucket}/{gcs_path}/output"
-        logging.info("Uploading inputs to gcs ...")
-        gcs_util.upload_directory(
-            local_input_dir, self.config.gcs_bucket, f"{gcs_path}/input"
-        )
         logging.info("Start translation job...")
-        job_name = self.create_migration_workflow(gcs_input_path, gcs_output_path)
+        job_name = self.create_migration_workflow(
+            self._processor_pipeline.upload_uri,
+            self._processor_pipeline.download_uri,
+        )
         self._wait_until_job_finished(job_name)
-        logging.info("Downloading outputs...")
-        gcs_util.download_directory(
-            local_output_dir, self.config.gcs_bucket, f"{gcs_path}/output"
-        )
 
-        if self.preprocessor is not None:
-            logging.info(
-                "Start post-processing by reverting the macros substitution..."
-            )
-            self.preprocessor.postprocess(local_output_dir, self._output_directory)
-
-        logging.info(
-            "Finished postprocessing. The outputs are in %s", self._output_directory
-        )
-
-        if self.config.clean_up_tmp_files and os.path.exists(self.tmp_dir):
-            logging.info('Cleaning up tmp files under "%s"...', self.tmp_dir)
-            shutil.rmtree(self.tmp_dir)
-            logging.info("Finished cleanup.")
+        self._processor_pipeline.postprocess()
 
         logging.info("The job finished successfully!")
         logging.info(
@@ -117,17 +77,6 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
         logging.info(
             "Thank you for using BigQuery SQL Translation Service with the Python "
             "exemplary client!"
-        )
-
-    def _generate_gcs_path(self) -> str:
-        """Generates a gcs_path in the format of
-        {translation_type}-{yyyy-mm-dd}-xxxx-xxxx-xxx-xxxx-xxxxxx.
-        The suffix is a random generated uuid string.
-        """
-        return (
-            f"{self.config.translation_type}-"
-            f"{datetime.now().strftime('%Y-%m-%d')}-"
-            f"{str(uuid.uuid4())}"
         )
 
     def _get_ui_link(self) -> str:

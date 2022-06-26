@@ -20,8 +20,11 @@ from functools import partial
 from dwh_migration_client import batch_sql_translator
 from dwh_migration_client.config_parser import ConfigParser
 from dwh_migration_client.gcloud_auth_helper import validate_gcloud_auth_settings
-from dwh_migration_client.macro_processor import MacroProcessor
 from dwh_migration_client.object_mapping_parser import ObjectMappingParser
+from dwh_migration_client.processors.pipeline import ProcessorPipeline
+from dwh_migration_client.processors.pipeline_config_parser import (
+    ProcessorPipelineConfigParser,
+)
 from dwh_migration_client.validation import (
     validated_directory,
     validated_file,
@@ -36,10 +39,16 @@ def start_translation(args: argparse.Namespace) -> None:
     logging.info("Verify cloud login and credential settings...")
     validate_gcloud_auth_settings(config.project_number)
 
-    if args.macros:
-        preprocessor = MacroProcessor(args)
-    else:
-        preprocessor = None
+    processor_pipeline_config = ProcessorPipelineConfigParser(
+        args.processor_pipeline_config
+    ).parse()
+
+    processor_pipeline = ProcessorPipeline(
+        config=processor_pipeline_config,
+        input_path=args.input,
+        output_path=args.output,
+        gcs_bucket=config.gcs_bucket,
+    )
 
     if args.object_name_mapping:
         object_name_mapping_list = ObjectMappingParser(
@@ -49,7 +58,7 @@ def start_translation(args: argparse.Namespace) -> None:
         object_name_mapping_list = None
 
     translator = batch_sql_translator.BatchSqlTranslator(
-        config, args.input, args.output, preprocessor, object_name_mapping_list
+        config, processor_pipeline, object_name_mapping_list
     )
     translator.start_translation()
 
@@ -81,14 +90,15 @@ def main() -> None:
         help="Path to the output_directory. (default: client/output)",
     )
     parser.add_argument(
-        "-m",
-        "--macros",
+        "-p",
+        "--processor_pipeline_config",
         type=validated_file,
-        help="Path to the macro map yaml file. If specified, the program will "
-        "pre-process all the input query files by replacing the macros with "
-        "corresponding string values according to the macro map definition. After "
-        "translation, the program will revert the substitutions for all the output "
-        "query files in a post-processing step.  The replacement does not apply for "
+        help="Path to the processors yaml file. If specified, the program will "
+        "preprocess all the input query files by passing them to the preprocess "
+        "method of each processor classes listed in the processors yaml file. After "
+        "translation, the program will postprocess the translated output files by "
+        "passing them to the postprocess method of each processor classes listed in "
+        "the processors yaml file.  The pre and postprocessing does not apply for "
         "files with extension of .zip, .csv, .json.",
     )
     parser.add_argument(
@@ -105,7 +115,7 @@ def main() -> None:
 
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s: %(levelname)s: %(message)s",
+        format="%(asctime)s: %(threadName)s: %(levelname)s: %(message)s",
     )
 
     return start_translation(args)
