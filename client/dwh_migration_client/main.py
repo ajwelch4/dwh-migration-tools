@@ -57,8 +57,10 @@ def start_translation(args: argparse.Namespace) -> None:
     else:
         preprocessor = None
 
-    logging.info("Verify cloud login and credential settings...")
-    validate_gcloud_auth_settings(config.gcp_settings.project_number)
+    try:
+        validate_gcloud_auth_settings(config.gcp_settings.project_number)
+    except RuntimeError:
+        sys.exit(1)
 
     translator = batch_sql_translator.BatchSqlTranslator(
         config, args.input, args.output, preprocessor, object_name_mapping_list
