@@ -15,6 +15,7 @@
 
 import json
 import logging
+import pathlib
 from pprint import pformat
 
 from google.cloud.bigquery_migration_v2 import (
@@ -87,7 +88,7 @@ class ObjectNameMappingListSchema(Schema):
         return ObjectNameMappingList(**data)
 
 
-def parse(object_name_mapping_file_path: str) -> ObjectNameMappingList:
+def parse(object_name_mapping_file_path: pathlib.Path) -> ObjectNameMappingList:
     """Parses the object name mapping json file into ObjectNameMappingList."""
     logging.info("Parsing object name mapping file: %s.", object_name_mapping_file_path)
     with open(object_name_mapping_file_path, encoding="utf-8") as file:

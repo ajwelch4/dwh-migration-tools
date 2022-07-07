@@ -14,6 +14,7 @@
 """Parses the config file into a Config object."""
 
 import logging
+import pathlib
 from dataclasses import asdict, dataclass
 from pprint import pformat
 from typing import List, Optional
@@ -92,7 +93,7 @@ class ConfigSchema(Schema):
         return Config(**data)
 
 
-def parse(config_file_path: str) -> Config:
+def parse(config_file_path: pathlib.Path) -> Config:
     """Parses the config file into a Config object.
 
     Return:

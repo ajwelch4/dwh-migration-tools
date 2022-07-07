@@ -18,60 +18,58 @@ import pathlib
 import shutil
 
 
-def validated_file(unvalidated_path: str) -> str:
+def validated_file(unvalidated_path: str) -> pathlib.Path:
     """Validates a path is a regular file that exists.
     Args:
         unvalidated_path: A string representing the path to validate.
     Returns:
-        A string representing a validated POSIX path.
+        A validated pathlib.Path.
     Raises:
         argparse.ArgumentTypeError: unvalidated_path is not a regular file that exists.
     """
-    path = pathlib.Path(unvalidated_path)
+    path = pathlib.Path(unvalidated_path).resolve()
     if path.is_file():
-        return path.as_posix()
-    raise argparse.ArgumentTypeError(
-        f"{path.as_posix()} is not a regular file that exists."
-    )
+        return path
+    raise argparse.ArgumentTypeError(f"{path} is not a regular file that exists.")
 
 
-def validated_directory(unvalidated_path: str) -> str:
+def validated_directory(unvalidated_path: str) -> pathlib.Path:
     """Validates a path is a directory that exists.
     Args:
         unvalidated_path: A string representing the path to validate.
     Returns:
-        A string representing a validated POSIX path.
+        A validated pathlib.Path.
     Raises:
         argparse.ArgumentTypeError: unvalidated_path is not a directory that exists.
     """
-    path = pathlib.Path(unvalidated_path)
+    path = pathlib.Path(unvalidated_path).resolve()
     if path.is_dir():
-        return path.as_posix()
-    raise argparse.ArgumentTypeError(
-        f"{path.as_posix()} is not a directory that exists."
-    )
+        return path
+    raise argparse.ArgumentTypeError(f"{path} is not a directory that exists.")
 
 
-def validated_nonexistent_path(unvalidated_path: str, force: bool = False) -> str:
+def validated_nonexistent_path(
+    unvalidated_path: str, force: bool = False
+) -> pathlib.Path:
     """Validates a path does not exist.
     Args:
         unvalidated_path: A string representing the path to validate.
         force: A boolean representing whether to remove unvalidated_path if it exists.
     Returns:
-        A string representing a validated POSIX path.
+        A validated pathlib.Path.
     Raises:
         argparse.ArgumentTypeError: unvalidated_path already exists.
     """
-    path = pathlib.Path(unvalidated_path)
+    path = pathlib.Path(unvalidated_path).resolve()
 
     if not path.exists():
-        return path.as_posix()
+        return path
 
     if force:
         if path.is_dir():
             shutil.rmtree(path)
         if path.is_file():
             path.unlink()
-        return path.as_posix()
+        return path
 
-    raise argparse.ArgumentTypeError(f"{path.as_posix()} already exists.")
+    raise argparse.ArgumentTypeError(f"{path} already exists.")
