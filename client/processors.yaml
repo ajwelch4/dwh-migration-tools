@@ -1,0 +1,40 @@
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+processors:
+- name: dwh_migration_client.processors.macro_processor.MacroProcessor
+  args:
+    # Example macro substitution map. Given this map, the processor will
+    # perform the following operations:
+
+    # Before translation starts (preprocessing): for every file with a '.sql'
+    # extension, the strings '${MACRO_1}' and '%MACRO_2%' will be replaced
+    # with 'macro_replacement_1' and 'macro_replacement_2', respectively. For
+    # the file '2.sql', the processor will also replace 'templated_column' with
+    # 'replacing_column'.
+
+    # After translation finishes (post-processing): for every translated output
+    # file the processor will reverse the aforementioned substitution.
+
+    # Note that the processor just performs simple string replacement.
+    # Collisions can happen if different macros are mapped to the same value.
+    macros:
+      '*.sql':
+        '${MACRO_1}': 'my_table'
+        '%MACRO_2%': 'macro_replacement_2'
+      '2.sql':
+        'templated_column': 'replacing_column'
+
+# Set this to dump intermediate pre and postprocessing to files.
+intermediate_directory: .tmp

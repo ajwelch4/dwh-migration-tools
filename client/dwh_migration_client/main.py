@@ -23,8 +23,13 @@ from marshmallow import ValidationError
 from dwh_migration_client import batch_sql_translator
 from dwh_migration_client.config import parse as parse_config
 from dwh_migration_client.gcloud_auth_helper import validate_gcloud_auth_settings
-from dwh_migration_client.macro_processor import MacroProcessor
 from dwh_migration_client.object_name_mapping import parse as parse_object_name_mapping
+from dwh_migration_client.processors.gcs_processor import GcsProcessor
+from dwh_migration_client.processors.pipeline import ProcessorPipeline
+from dwh_migration_client.processors.pipeline_config import ProcessorPipelineConfig
+from dwh_migration_client.processors.pipeline_config import (
+    parse as parse_pipeline_config,
+)
 from dwh_migration_client.validation import (
     validated_directory,
     validated_file,
@@ -39,6 +44,27 @@ def start_translation(args: argparse.Namespace) -> None:
     except ValidationError:
         sys.exit(1)
 
+    try:
+        gcs_processor = GcsProcessor(config.gcp_settings.gcs_bucket)
+    except ValidationError:
+        sys.exit(1)
+
+    if args.processor_pipeline_config:
+        try:
+            processor_pipeline_config = parse_pipeline_config(
+                args.processor_pipeline_config
+            )
+        except ValidationError:
+            sys.exit(1)
+        processor_pipeline_config.processors.append(gcs_processor)
+    else:
+        processor_pipeline_config = ProcessorPipelineConfig(processors=[gcs_processor])
+    processor_pipeline = ProcessorPipeline(
+        config=processor_pipeline_config,
+        input_path=args.input,
+        output_path=args.output,
+    )
+
     if args.object_name_mapping:
         try:
             object_name_mapping_list = parse_object_name_mapping(
@@ -49,21 +75,17 @@ def start_translation(args: argparse.Namespace) -> None:
     else:
         object_name_mapping_list = None
 
-    if args.macros:
-        try:
-            preprocessor = MacroProcessor(args)
-        except ValidationError:
-            sys.exit(1)
-    else:
-        preprocessor = None
-
     try:
         validate_gcloud_auth_settings(config.gcp_settings.project_number)
     except RuntimeError:
         sys.exit(1)
 
     translator = batch_sql_translator.BatchSqlTranslator(
-        config, args.input, args.output, preprocessor, object_name_mapping_list
+        config,
+        processor_pipeline,
+        gcs_processor.upload_uri,
+        gcs_processor.download_uri,
+        object_name_mapping_list,
     )
     translator.start_translation()
 
@@ -95,14 +117,15 @@ def main() -> None:
         help="Path to the output_directory. (default: client/output)",
     )
     parser.add_argument(
-        "-m",
-        "--macros",
+        "-p",
+        "--processor_pipeline_config",
         type=validated_file,
-        help="Path to the macro map yaml file. If specified, the program will "
-        "pre-process all the input query files by replacing the macros with "
-        "corresponding string values according to the macro map definition. After "
-        "translation, the program will revert the substitutions for all the output "
-        "query files in a post-processing step.  The replacement does not apply for "
+        help="Path to the processors yaml file. If specified, the program will "
+        "preprocess all the input query files by passing them to the preprocess "
+        "method of each processor classes listed in the processors yaml file. After "
+        "translation, the program will postprocess the translated output files by "
+        "passing them to the postprocess method of each processor classes listed in "
+        "the processors yaml file.  The pre and postprocessing does not apply for "
         "files with extension of .zip, .csv, .json.",
     )
     parser.add_argument(
@@ -119,7 +142,7 @@ def main() -> None:
 
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s: %(levelname)s: %(message)s",
+        format="%(asctime)s: %(threadName)s: %(levelname)s: %(message)s",
     )
 
     return start_translation(args)

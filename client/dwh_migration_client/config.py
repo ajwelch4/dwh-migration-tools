@@ -49,7 +49,6 @@ class TranslationConfig:
     location: str
     default_database: Optional[str]
     schema_search_path: Optional[List[str]]
-    clean_up_tmp_files: bool
 
 
 class TranslationConfigSchema(Schema):
@@ -69,7 +68,6 @@ class TranslationConfigSchema(Schema):
     location = fields.String(required=True)
     default_database = fields.String(load_default=None)
     schema_search_path = fields.List(fields.String(), load_default=None)
-    clean_up_tmp_files = fields.Boolean(load_default=True)
 
     @post_load
     def build(self, data, **kwargs):  # type: ignore[no-untyped-def] # pylint: disable=unused-argument

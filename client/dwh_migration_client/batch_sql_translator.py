@@ -15,23 +15,18 @@
     python client library."""
 
 import logging
-import pathlib
-import shutil
 import sys
 import time
-import uuid
 from datetime import datetime
 from typing import Optional
 
 from google.cloud import bigquery_migration_v2
 
-from dwh_migration_client import gcs_util
 from dwh_migration_client.config import Config
-from dwh_migration_client.macro_processor import MacroProcessor
+from dwh_migration_client.processors.pipeline import ProcessorPipeline
 
 
-# TODO: Refactor the attributes of this class.
-class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
+class BatchSqlTranslator:
     """A class to manage Batch SQL Translation job using the bigquery_migration_v2
     python client library.
 
@@ -40,79 +35,44 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         config: Config,
-        input_directory: pathlib.Path,
-        output_directory: pathlib.Path,
-        preprocessor: Optional[MacroProcessor] = None,
+        processor_pipeline: ProcessorPipeline,
+        gcs_input_uri: str,
+        gcs_output_uri: str,
         object_name_mapping_list: Optional[
             bigquery_migration_v2.ObjectNameMappingList
         ] = None,
     ) -> None:
-        self.config = config
-        self._input_directory = input_directory
-        self._output_directory = output_directory
-        self.client = bigquery_migration_v2.MigrationServiceClient()
-        self.preprocessor = preprocessor  # May be None
+        self._config = config
+        self._processor_pipeline = processor_pipeline
+        self._gcs_input_uri = gcs_input_uri
+        self._gcs_output_uri = gcs_output_uri
+        self._client = bigquery_migration_v2.MigrationServiceClient()
         self._object_name_mapping_list = object_name_mapping_list
-        self.tmp_dir = self._input_directory.parent / self._TMP_DIR_NAME
 
     _JOB_FINISHED_STATES = {
         bigquery_migration_v2.types.MigrationWorkflow.State.COMPLETED,
         bigquery_migration_v2.types.MigrationWorkflow.State.PAUSED,
     }
 
-    # The name of a hidden directory that stores temporary processed files if user
-    # defines a macro replacement map.
-    # This directory will be deleted (by default) after the job finishes.
-    _TMP_DIR_NAME = ".tmp_processed"
-
     def start_translation(self) -> None:
-        """Waits until the workflow finishes by calling the Migration Service API every
-        5 seconds.
+        """The main workflow for the batch translation job.
 
-        workflow_id: the workflow id in the format of
-        length_seconds: max wait time.
+        The workflow includes the following steps:
+            - Run preprocessors.
+            - Create migration workflow job.
+            - Wait for job to finish.
+            - Run postprocessors.
         """
-        local_input_dir = self._input_directory
-        local_output_dir = self._output_directory
-        if self.preprocessor is not None:
-            logging.info("Start pre-processing input query files...")
-            local_input_dir = self.tmp_dir / "input"
-            local_output_dir = self.tmp_dir / "output"
-            self.preprocessor.preprocess(self._input_directory, local_input_dir)
+        self._processor_pipeline.preprocess()
 
-        gcs_path = self._generate_gcs_path()
-        gcs_input_path = f"gs://{self.config.gcp_settings.gcs_bucket}/{gcs_path}/input"
-        gcs_output_path = (
-            f"gs://{self.config.gcp_settings.gcs_bucket}/{gcs_path}/output"
-        )
-        logging.info("Uploading inputs to gcs ...")
-        gcs_util.upload_directory(
-            local_input_dir, self.config.gcp_settings.gcs_bucket, f"{gcs_path}/input"
-        )
         logging.info("Start translation job...")
-        job_name = self.create_migration_workflow(gcs_input_path, gcs_output_path)
+        job_name = self.create_migration_workflow(
+            self._gcs_input_uri,
+            self._gcs_output_uri,
+        )
         self._wait_until_job_finished(job_name)
-        logging.info("Downloading outputs...")
-        gcs_util.download_directory(
-            local_output_dir,
-            self.config.gcp_settings.gcs_bucket,
-            f"{gcs_path}/output",
-        )
 
-        if self.preprocessor is not None:
-            logging.info(
-                "Start post-processing by reverting the macros substitution..."
-            )
-            self.preprocessor.postprocess(local_output_dir, self._output_directory)
-
-        logging.info(
-            "Finished postprocessing. The outputs are in %s", self._output_directory
-        )
-
-        if self.config.translation_config.clean_up_tmp_files and self.tmp_dir.is_dir():
-            logging.info('Cleaning up tmp files under "%s"...', self.tmp_dir)
-            shutil.rmtree(self.tmp_dir)
-            logging.info("Finished cleanup.")
+        self._processor_pipeline.postprocess()
 
         logging.info("The job finished successfully!")
         logging.info(
@@ -123,22 +83,11 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
             "exemplary client!"
         )
 
-    def _generate_gcs_path(self) -> str:
-        """Generates a gcs_path in the format of
-        {translation_type}-{yyyy-mm-dd}-xxxx-xxxx-xxx-xxxx-xxxxxx.
-        The suffix is a random generated uuid string.
-        """
-        return (
-            f"{self.config.translation_config.translation_type.name}-"
-            f"{datetime.now().strftime('%Y-%m-%d')}-"
-            f"{str(uuid.uuid4())}"
-        )
-
     def _get_ui_link(self) -> str:
         """Returns the http link to the batch translation page for this project."""
         return (
             "https://console.cloud.google.com/bigquery/migrations/batch-translation"
-            f"?projectnumber={self.config.gcp_settings.project_number}"
+            f"?projectnumber={self._config.gcp_settings.project_number}"
         )
 
     def _wait_until_job_finished(
@@ -179,16 +128,16 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
         """
         logging.info(
             "List migration workflows for project %s",
-            self.config.gcp_settings.project_number,
+            self._config.gcp_settings.project_number,
         )
         request = bigquery_migration_v2.ListMigrationWorkflowsRequest(
             parent=(
-                f"projects/{self.config.gcp_settings.project_number}/"
-                f"locations/{self.config.translation_config.location}"
+                f"projects/{self._config.gcp_settings.project_number}/"
+                f"locations/{self._config.translation_config.location}"
             )
         )
 
-        page_result = self.client.list_migration_workflows(request=request)
+        page_result = self._client.list_migration_workflows(request=request)
 
         for i, response in enumerate(page_result):
             if i < num_jobs:
@@ -204,7 +153,7 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
             name=job_name,
         )
 
-        page_result = self.client.get_migration_workflow(request=request)
+        page_result = self._client.get_migration_workflow(request=request)
         return page_result
 
     def create_migration_workflow(
@@ -217,30 +166,30 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
         translation_config = bigquery_migration_v2.TranslationConfigDetails(
             gcs_source_path=gcs_input_path,
             gcs_target_path=gcs_output_path,
-            source_dialect=self.config.translation_config.translation_type.value,
+            source_dialect=self._config.translation_config.translation_type.value,
             target_dialect=target_dialect,
         )
 
         if (
-            self.config.translation_config.default_database
-            or self.config.translation_config.schema_search_path
+            self._config.translation_config.default_database
+            or self._config.translation_config.schema_search_path
         ):
             translation_config.source_env = bigquery_migration_v2.types.SourceEnv(
-                default_database=self.config.translation_config.default_database,
-                schema_search_path=self.config.translation_config.schema_search_path,
+                default_database=self._config.translation_config.default_database,
+                schema_search_path=self._config.translation_config.schema_search_path,
             )
 
         if self._object_name_mapping_list:
             translation_config.name_mapping_list = self._object_name_mapping_list
 
         migration_task = bigquery_migration_v2.MigrationTask(
-            type=self.config.translation_config.translation_type.name,
+            type=self._config.translation_config.translation_type.name,
             translation_config_details=translation_config,
         )
 
         workflow = bigquery_migration_v2.MigrationWorkflow(
             display_name=(
-                f"{self.config.translation_config.translation_type.name}-cli-"
+                f"{self._config.translation_config.translation_type.name}-cli-"
                 f"{datetime.now().strftime('%m-%d-%H:%M')}"
             )
         )
@@ -248,13 +197,13 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
         workflow.tasks["translation-task"] = migration_task
         request = bigquery_migration_v2.CreateMigrationWorkflowRequest(
             parent=(
-                f"projects/{self.config.gcp_settings.project_number}/"
-                f"locations/{self.config.translation_config.location}"
+                f"projects/{self._config.gcp_settings.project_number}/"
+                f"locations/{self._config.translation_config.location}"
             ),
             migration_workflow=workflow,
         )
 
-        response = self.client.create_migration_workflow(request=request)
+        response = self._client.create_migration_workflow(request=request)
         logging.info(response)
         name: str = response.name
         return name
