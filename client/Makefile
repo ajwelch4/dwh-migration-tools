@@ -38,3 +38,7 @@ check: format lint typecheck
 .PHONY: test
 test:
 	nox --sessions test
+
+.PHONY: clean
+clean:
+	rm -rf .nox .pytest_cache build output .tmp

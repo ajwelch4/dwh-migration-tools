@@ -22,6 +22,8 @@ import yaml
 from marshmallow import Schema, ValidationError, fields, post_load
 from yaml.loader import SafeLoader
 
+from dwh_migration_client.io.abc import Reader, Writer
+from dwh_migration_client.io.schemas import ReaderSchema, WriterSchema
 from dwh_migration_client.translation_type import TranslationType
 
 
@@ -48,7 +50,6 @@ class TranslationConfig:
     location: str
     default_database: Optional[str]
     schema_search_path: Optional[List[str]]
-    clean_up_tmp_files: bool
 
 
 class TranslationConfigSchema(Schema):
@@ -68,7 +69,6 @@ class TranslationConfigSchema(Schema):
     location = fields.String(required=True)
     default_database = fields.String(load_default=None)
     schema_search_path = fields.List(fields.String(), load_default=None)
-    clean_up_tmp_files = fields.Boolean(load_default=True)
 
     @post_load
     def build(self, data, **kwargs):  # type: ignore[no-untyped-def] # pylint: disable=unused-argument
@@ -79,6 +79,9 @@ class TranslationConfigSchema(Schema):
 class Config:
     gcp_settings: GcpConfig
     translation_config: TranslationConfig
+    reader: Reader
+    writer: Writer
+    clean_up_tmp_files: bool
 
 
 class ConfigSchema(Schema):
@@ -86,6 +89,9 @@ class ConfigSchema(Schema):
 
     gcp_settings = fields.Nested(GcpConfigSchema, required=True)
     translation_config = fields.Nested(TranslationConfigSchema, required=True)
+    reader = fields.Nested(ReaderSchema, required=True)
+    writer = fields.Nested(WriterSchema, required=True)
+    clean_up_tmp_files = fields.Boolean(load_default=True)
 
     @post_load
     def build(self, data, **kwargs):  # type: ignore[no-untyped-def] # pylint: disable=unused-argument

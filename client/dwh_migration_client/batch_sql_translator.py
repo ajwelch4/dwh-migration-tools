@@ -15,23 +15,20 @@
     python client library."""
 
 import logging
-import os
-import shutil
 import sys
 import time
 import uuid
 from datetime import datetime
-from os.path import dirname, join
+from os.path import join
 from typing import Optional
 
 from google.cloud import bigquery_migration_v2
 
 from dwh_migration_client import gcs_util
 from dwh_migration_client.config import Config
-from dwh_migration_client.macro_processor import MacroProcessor
+from dwh_migration_client.file_processor import FileProcessor
 
 
-# TODO: Refactor the attributes of this class.
 class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
     """A class to manage Batch SQL Translation job using the bigquery_migration_v2
     python client library.
@@ -41,20 +38,15 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         config: Config,
-        input_directory: str,
-        output_directory: str,
-        preprocessor: Optional[MacroProcessor] = None,
+        file_processor: FileProcessor,
         object_name_mapping_list: Optional[
             bigquery_migration_v2.ObjectNameMappingList
         ] = None,
     ) -> None:
         self.config = config
-        self._input_directory = input_directory
-        self._output_directory = output_directory
         self.client = bigquery_migration_v2.MigrationServiceClient()
-        self.preprocessor = preprocessor  # May be None
+        self._file_processor = file_processor
         self._object_name_mapping_list = object_name_mapping_list
-        self.tmp_dir = join(dirname(self._input_directory), self._TMP_DIR_NAME)
 
     _JOB_FINISHED_STATES = {
         bigquery_migration_v2.types.MigrationWorkflow.State.COMPLETED,
@@ -73,13 +65,9 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
         workflow_id: the workflow id in the format of
         length_seconds: max wait time.
         """
-        local_input_dir = self._input_directory
-        local_output_dir = self._output_directory
-        if self.preprocessor is not None:
-            logging.info("Start pre-processing input query files...")
-            local_input_dir = join(self.tmp_dir, "input")
-            local_output_dir = join(self.tmp_dir, "output")
-            self.preprocessor.preprocess(self._input_directory, local_input_dir)
+
+        logging.info("Start pre-processing input query files...")
+        self._file_processor.preprocess()
 
         gcs_path = self._generate_gcs_path()
         gcs_input_path = join(
@@ -90,7 +78,7 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
         )
         logging.info("Uploading inputs to gcs ...")
         gcs_util.upload_directory(
-            local_input_dir,
+            self._file_processor.upload_path.as_posix(),
             self.config.gcp_settings.gcs_bucket,
             join(gcs_path, "input"),
         )
@@ -99,27 +87,19 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
         self._wait_until_job_finished(job_name)
         logging.info("Downloading outputs...")
         gcs_util.download_directory(
-            local_output_dir,
+            self._file_processor.download_path.as_posix(),
             self.config.gcp_settings.gcs_bucket,
             join(gcs_path, "output"),
         )
 
-        if self.preprocessor is not None:
-            logging.info(
-                "Start post-processing by reverting the macros substitution..."
-            )
-            self.preprocessor.postprocess(local_output_dir, self._output_directory)
+        logging.info(
+            "Start post-processing by reverting the macros substitution..."
+        )
+        self._file_processor.postprocess()
 
         logging.info(
-            "Finished postprocessing. The outputs are in %s", self._output_directory
+            "Finished postprocessing. The outputs are in %s", self._file_processor.download_path
         )
-
-        if self.config.translation_config.clean_up_tmp_files and os.path.exists(
-            self.tmp_dir
-        ):
-            logging.info('Cleaning up tmp files under "%s"...', self.tmp_dir)
-            shutil.rmtree(self.tmp_dir)
-            logging.info("Finished cleanup.")
 
         logging.info("The job finished successfully!")
         logging.info(
