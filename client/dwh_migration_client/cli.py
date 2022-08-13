@@ -11,11 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""CLI validations for BigQuery Batch SQL Translator"""
+"""CLI for BigQuery Batch SQL Translator."""
 
 import argparse
 import pathlib
 import shutil
+from functools import partial
+from typing import List
 
 
 def validated_file(unvalidated_path: str) -> str:
@@ -75,3 +77,60 @@ def validated_nonexistent_path(unvalidated_path: str, force: bool = False) -> st
         return path.as_posix()
 
     raise argparse.ArgumentTypeError(f"{path.as_posix()} already exists.")
+
+
+def parse_args(args: List[str]) -> argparse.Namespace:
+    """Argument parser for the BigQuery Batch SQL Translator CLI."""
+    parser = argparse.ArgumentParser(
+        description="Config the Batch Sql translation tool."
+    )
+    parser.add_argument(
+        "--verbose", help="Increase output verbosity", action="store_true"
+    )
+    parser.add_argument(
+        "--config",
+        type=validated_file,
+        default="client/config.yaml",
+        help="Path to the config.yaml file. (default: client/config.yaml)",
+    )
+    parser.add_argument(
+        "--input",
+        type=validated_directory,
+        default="client/input",
+        help="Path to the input_directory. (default: client/input)",
+    )
+    parser.add_argument(
+        "--output",
+        type=partial(validated_nonexistent_path, force=True),
+        default="client/output",
+        help="Path to the output_directory. (default: client/output)",
+    )
+    parser.add_argument(
+        "-m",
+        "--macros",
+        type=validated_file,
+        help="Path to the macro map yaml file. If specified, the program will "
+             "pre-process all the input query files by replacing the macros with "
+             "corresponding string values according to the macro map definition. After "
+             "translation, the program will revert the substitutions for all the output "
+             "query files in a post-processing step.  The replacement does not apply for "
+             "files with extension of .zip, .csv, .json.",
+    )
+    parser.add_argument(
+        "-o",
+        "--object_name_mapping",
+        type=validated_file,
+        help="Path to the object name mapping json file. Name mapping lets you "
+             "identify the names of SQL objects in your source files, and specify target "
+             "names for those objects in BigQuery. More info please see "
+             "https://cloud.google.com/bigquery/docs/output-name-mapping.",
+    )
+
+    parsed_args = parser.parse_args(args)
+
+    logging.basicConfig(
+        level=logging.DEBUG if parsed_args.verbose else logging.INFO,
+        format="%(asctime)s: %(levelname)s: %(message)s",
+    )
+
+    return parsed_args

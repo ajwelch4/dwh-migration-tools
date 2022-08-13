@@ -26,7 +26,7 @@ from typing import Optional
 
 from google.cloud import bigquery_migration_v2
 
-from dwh_migration_client import gcs_util
+from dwh_migration_client.gcp import gcs_util
 from dwh_migration_client.config import Config
 from dwh_migration_client.macro_processor import MacroProcessor
 

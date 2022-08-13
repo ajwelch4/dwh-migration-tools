@@ -22,7 +22,7 @@ import yaml
 from marshmallow import Schema, ValidationError, fields, post_load
 from yaml.loader import SafeLoader
 
-from dwh_migration_client.translation_type import TranslationType
+from dwh_migration_client.gcp.bqms.translation_type import TranslationType
 
 
 @dataclass
