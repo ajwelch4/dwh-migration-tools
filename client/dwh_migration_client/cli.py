@@ -91,20 +91,20 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     parser.add_argument(
         "--config",
         type=validated_file,
-        default="client/config/config.yaml",
-        help="Path to the config.yaml file. (default: client/config.yaml)",
+        default="config/config.yaml",
+        help="Path to the config.yaml file. (default: config/config.yaml)",
     )
     parser.add_argument(
         "--input",
         type=validated_directory,
-        default="client/input",
-        help="Path to the input_directory. (default: client/input)",
+        default="input",
+        help="Path to the input_directory. (default: input)",
     )
     parser.add_argument(
         "--output",
         type=partial(validated_nonexistent_path, force=True),
-        default="client/output",
-        help="Path to the output_directory. (default: client/output)",
+        default="output",
+        help="Path to the output_directory. (default: output)",
     )
     parser.add_argument(
         "-m",
@@ -125,6 +125,16 @@ def parse_args(args: List[str]) -> argparse.Namespace:
              "identify the names of SQL objects in your source files, and specify target "
              "names for those objects in BigQuery. More info please see "
              "https://cloud.google.com/bigquery/docs/output-name-mapping.",
+    )
+    parser.add_argument(
+        "-p",
+        "--processors",
+        type=validated_file,
+        help="Path to the processors Python file. This file should contain a "
+             "function called preprocess that gets called once for each input "
+             "file as well as a function called postprocess that gets called "
+             "once for each translated output file. See config/processors.py "
+             "for example.",
     )
 
     parsed_args = parser.parse_args(args)

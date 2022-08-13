@@ -20,15 +20,17 @@ def test_translation():
     args = parse_args(
         [
             "--config",
-            "config.yaml",
+            "config/config.yaml",
             "--input",
             "input",
             "--output",
             "output",
             "-o",
-            "object_mapping.json",
+            "config/object_mapping.json",
             "-m",
-            "macros.yaml",
+            "config/macros.yaml",
+            "-p",
+            "config/processors.py"
         ]
     )
     start_translation(args)
