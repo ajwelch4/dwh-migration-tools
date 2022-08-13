@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""""""
+"""Instantiate the object graph, preprocess, translate and postprocess."""
 
 import argparse
 import logging
@@ -62,7 +62,7 @@ def start_translation(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    """CLI for BigQuery Batch SQL Translator"""
+    """Instantiate the object graph, preprocess, translate and postprocess."""
     args = parse_args(sys.argv[1:])
     return start_translation(args)
 
