@@ -14,6 +14,7 @@
 """CLI for BigQuery Batch SQL Translator."""
 
 import argparse
+import logging
 import pathlib
 import shutil
 from functools import partial
@@ -90,7 +91,7 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     parser.add_argument(
         "--config",
         type=validated_file,
-        default="client/config.yaml",
+        default="client/config/config.yaml",
         help="Path to the config.yaml file. (default: client/config.yaml)",
     )
     parser.add_argument(
