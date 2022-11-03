@@ -21,6 +21,9 @@ from pathlib import Path, PurePosixPath
 from google.cloud import storage
 from google.cloud.exceptions import NotFound
 from google.cloud.storage import Bucket
+from google.cloud.storage import constants
+
+constants._DEFAULT_TIMEOUT = 240
 
 
 def upload_directory(local_dir: str, bucket_name: str, gcs_path: str) -> None:

@@ -151,7 +151,7 @@ class BatchSqlTranslator:  # pylint: disable=too-many-instance-attributes
         )
 
     def _wait_until_job_finished(
-        self, workflow_id: str, length_seconds: int = 600
+        self, workflow_id: str, length_seconds: int = (60*60*6)
     ) -> None:
         """Waits until the workflow finishes by calling the Migration Service API every
         5 seconds.
